@@ -13,6 +13,8 @@ public sealed class KeywordCommitClassifierTests
     [InlineData("refactor parser", ChangeCategory.Improvement)]
     [InlineData("docs: update readme", ChangeCategory.Documentation)]
     [InlineData("chore: bump dependencies", ChangeCategory.Maintenance)]
+    [InlineData("defeat flaky test", ChangeCategory.Unknown)]
+    [InlineData("fixture update", ChangeCategory.Unknown)]
     [InlineData("misc update", ChangeCategory.Unknown)]
     public void Classify_MapsCommonCommitKeywords(string message, ChangeCategory expected)
     {

@@ -56,6 +56,11 @@ public sealed class AzureDevOpsDataSource(HttpClient httpClient, AzureDevOpsOpti
 
             foreach (var item in items.EnumerateArray())
             {
+                if (commits.Count >= query.MaxCommits)
+                {
+                    break;
+                }
+
                 commits.Add(new CommitInfo(
                     item.TryGetProperty("commitId", out var commitId) ? commitId.GetString() ?? string.Empty : string.Empty,
                     item.TryGetProperty("comment", out var message) ? message.GetString() ?? string.Empty : string.Empty,
@@ -66,6 +71,11 @@ public sealed class AzureDevOpsDataSource(HttpClient httpClient, AzureDevOpsOpti
                         ? date.GetDateTimeOffset()
                         : DateTimeOffset.MinValue,
                     []));
+            }
+
+            if (items.GetArrayLength() < pageSize)
+            {
+                break;
             }
         }
 
