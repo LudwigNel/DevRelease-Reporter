@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DevReleaseReporter.Application/DevReleaseReporter.Application.csproj" />
+    <Project Path="src/DevReleaseReporter.Cli/DevReleaseReporter.Cli.csproj" />
+    <Project Path="src/DevReleaseReporter.Desktop/DevReleaseReporter.Desktop.csproj" />
+    <Project Path="src/DevReleaseReporter.Domain/DevReleaseReporter.Domain.csproj" />
+    <Project Path="src/DevReleaseReporter.Infrastructure.AzureDevOps/DevReleaseReporter.Infrastructure.AzureDevOps.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DevReleaseReporter.Application.Tests/DevReleaseReporter.Application.Tests.csproj" />
+  </Folder>
+</Solution>
