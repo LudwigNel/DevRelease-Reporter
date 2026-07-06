@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DevReleaseReporter.Cli/DevReleaseReporter.Cli.csproj" />
+    <Project Path="src/DevReleaseReporter.Core/DevReleaseReporter.Core.csproj" />
+    <Project Path="src/DevReleaseReporter.Infrastructure/DevReleaseReporter.Infrastructure.csproj" />
+    <Project Path="src/DevReleaseReporter.Ui/DevReleaseReporter.Ui.csproj" />
+  </Folder>
+</Solution>

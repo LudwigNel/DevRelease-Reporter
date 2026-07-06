@@ -1,0 +1,44 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="DevReleaseReporter.Ui.App"
+             xmlns:local="using:DevReleaseReporter.Ui">
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="PageBackgroundBrush" Color="#F3F7FB"/>
+                    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="SurfaceAltBrush" Color="#F8FAFC"/>
+                    <SolidColorBrush x:Key="SurfaceBorderBrush" Color="#DBE3F0"/>
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#334155"/>
+                    <SolidColorBrush x:Key="TextMutedBrush" Color="#64748B"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#2563EB"/>
+                    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#FFFFFF"/>
+                    <SolidColorBrush x:Key="OverlayBrush" Color="#AAE2E8F0"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="PageBackgroundBrush" Color="#0F172A"/>
+                    <SolidColorBrush x:Key="SurfaceBrush" Color="#111827"/>
+                    <SolidColorBrush x:Key="SurfaceAltBrush" Color="#1E293B"/>
+                    <SolidColorBrush x:Key="SurfaceBorderBrush" Color="#334155"/>
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#E2E8F0"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#CBD5E1"/>
+                    <SolidColorBrush x:Key="TextMutedBrush" Color="#94A3B8"/>
+                    <SolidColorBrush x:Key="AccentBrush" Color="#60A5FA"/>
+                    <SolidColorBrush x:Key="AccentForegroundBrush" Color="#0F172A"/>
+                    <SolidColorBrush x:Key="OverlayBrush" Color="#AA020617"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+  
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+</Application>
