@@ -10,54 +10,6 @@
         Background="{DynamicResource PageBackgroundBrush}"
         Title="DevRelease Reporter">
 
-    <Window.Styles>
-        <Style Selector="TextBlock.form-label">
-            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="13"/>
-        </Style>
-
-        <Style Selector="TextBox">
-            <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="CornerRadius" Value="10"/>
-        </Style>
-
-        <Style Selector="ComboBox">
-            <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="CornerRadius" Value="10"/>
-        </Style>
-
-        <Style Selector="CheckBox">
-            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-        </Style>
-
-        <Style Selector="Button">
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-        </Style>
-
-        <Style Selector="Button.primary">
-            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-        </Style>
-
-        <Style Selector="Button.secondary">
-            <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-    </Window.Styles>
-
     <Design.DataContext>
         <vm:MainWindowViewModel/>
     </Design.DataContext>
@@ -75,94 +27,55 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Spacing="8" HorizontalAlignment="Right">
-                            <TextBlock Classes="form-label" Text="Theme"/>
-                            <ComboBox ItemsSource="{Binding ThemeOptions}"
-                                      SelectedItem="{Binding SelectedTheme}"
-                                      MinWidth="140"/>
+                            <TextBlock Classes="form-label" Text="Current profile"/>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Button Classes="secondary icon"
+                                        ToolTip.Tip="Settings"
+                                        Height="56"
+                                        Click="OpenSettingsDialog">
+                                    <Path Width="18"
+                                          Height="18"
+                                          Stretch="Uniform"
+                                          Fill="{DynamicResource TextPrimaryBrush}"
+                                          Data="M19.14,12.94C19.18,12.64 19.2,12.32 19.2,12C19.2,11.68 19.18,11.36 19.13,11.06L21.25,9.41C21.44,9.26 21.49,9 21.37,8.78L19.37,5.32C19.25,5.1 18.99,5.02 18.76,5.1L16.26,6.1C15.74,5.7 15.18,5.37 14.56,5.12L14.18,2.47C14.15,2.23 13.94,2.05 13.7,2.05H10.3C10.06,2.05 9.85,2.23 9.82,2.47L9.44,5.12C8.82,5.37 8.26,5.7 7.74,6.1L5.24,5.1C5.01,5.02 4.75,5.1 4.63,5.32L2.63,8.78C2.51,9 2.56,9.26 2.75,9.41L4.87,11.06C4.82,11.36 4.8,11.69 4.8,12C4.8,12.31 4.82,12.64 4.87,12.94L2.75,14.59C2.56,14.74 2.51,15 2.63,15.22L4.63,18.68C4.75,18.9 5.01,18.98 5.24,18.9L7.74,17.9C8.26,18.3 8.82,18.63 9.44,18.88L9.82,21.53C9.85,21.77 10.06,21.95 10.3,21.95H13.7C13.94,21.95 14.15,21.77 14.18,21.53L14.56,18.88C15.18,18.63 15.74,18.3 16.26,17.9L18.76,18.9C18.99,18.98 19.25,18.9 19.37,18.68L21.37,15.22C21.49,15 21.44,14.74 21.25,14.59L19.14,12.94M12,15.5C10.07,15.5 8.5,13.93 8.5,12C8.5,10.07 10.07,8.5 12,8.5C13.93,8.5 15.5,10.07 15.5,12C15.5,13.93 13.93,15.5 12,15.5Z"/>
+                                </Button>
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{Binding ProfileOptions}"
+                                          SelectedItem="{Binding SelectedProfileName}"
+                                          MinWidth="220"/>
+                            </Grid>
                             <TextBlock Text="{Binding LastActivityText}" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right"/>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <Grid Grid.Row="1" ColumnDefinitions="380,*" ColumnSpacing="16">
-                    <Border Grid.Column="0" Padding="20" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource SurfaceBorderBrush}" BorderThickness="1" CornerRadius="16">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="Release scope" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Classes="form-label" Text="Profile"/>
-                                <ComboBox ItemsSource="{Binding ProfileOptions}"
-                                          SelectedItem="{Binding SelectedProfileName}" />
-                            </StackPanel>
-
-                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                                <TextBox Text="{Binding ProfileNameInput}" PlaceholderText="Profile name" />
-                                <Button Grid.Column="1" Classes="secondary" Command="{Binding SaveProfileCommand}" Content="Save profile"/>
-                                <Button Grid.Column="2" Classes="secondary" Command="{Binding DeleteProfileCommand}" Content="Delete"/>
-                            </Grid>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Classes="form-label" Text="Azure DevOps URL"/>
-                                <TextBox Text="{Binding OrganizationUrl}" PlaceholderText="https://dev.azure.com/your-org"/>
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Classes="form-label" Text="Project name"/>
-                                <TextBox Text="{Binding ProjectName}" PlaceholderText="YourProject"/>
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Classes="form-label" Text="Repository"/>
-                                <TextBox Text="{Binding RepositoryName}" PlaceholderText="YourRepository"/>
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Classes="form-label" Text="Branch (optional)"/>
-                                <TextBox Text="{Binding BranchName}" PlaceholderText="Leave blank to use all branches"/>
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Classes="form-label" Text="Contributor (optional)"/>
-                                <ComboBox ItemsSource="{Binding AvailableContributors}"
-                                          SelectedItem="{Binding SelectedContributor}" />
-                            </StackPanel>
-
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Classes="form-label" Text="From date"/>
-                                    <TextBox Text="{Binding FromDate}" PlaceholderText="yyyy-MM-dd"/>
+                <Grid Grid.Row="1">
+                    <Border Padding="20" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource SurfaceBorderBrush}" BorderThickness="1" CornerRadius="16">
+                        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="12">
+                            <Border Grid.Row="0"
+                                    Padding="16"
+                                    Background="{DynamicResource SurfaceAltBrush}"
+                                    BorderBrush="{DynamicResource SurfaceBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="14">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Contributor filter" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <ComboBox ItemsSource="{Binding AvailableContributors}"
+                                              SelectedItem="{Binding SelectedContributor}"
+                                              IsEnabled="{Binding HasFetchedReleaseData}" />
+                                    <TextBlock Text="{Binding ContributorFilterInstruction}"
+                                               Foreground="{DynamicResource TextMutedBrush}"
+                                               TextWrapping="Wrap"/>
                                 </StackPanel>
+                            </Border>
 
-                                <StackPanel Grid.Column="1" Spacing="6">
-                                    <TextBlock Classes="form-label" Text="To date"/>
-                                    <TextBox Text="{Binding ToDate}" PlaceholderText="yyyy-MM-dd"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Classes="form-label" Text="PAT token"/>
-                                <TextBox Text="{Binding PersonalAccessToken}" PasswordChar="●" PlaceholderText="Personal access token"/>
-                            </StackPanel>
-
-                            <StackPanel Spacing="6">
-                                <TextBlock Classes="form-label" Text="Output HTML path"/>
-                                <TextBox Text="{Binding OutputPath}" PlaceholderText="C:\Reports\release-report.html"/>
-                            </StackPanel>
-
-                            <CheckBox IsChecked="{Binding IncludeWorkItems}" Content="Include linked work items"/>
-                            <CheckBox IsChecked="{Binding IncludeTechnicalAppendix}" Content="Include technical appendix"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border Grid.Column="1" Padding="20" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource SurfaceBorderBrush}" BorderThickness="1" CornerRadius="16">
-                        <Grid RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
-                            <StackPanel Grid.Row="0" Spacing="4">
+                            <StackPanel Grid.Row="1" Spacing="4">
                                 <TextBlock Text="{Binding PreviewTitle}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                 <TextBlock Text="{Binding PreviewSubtitle}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding FetchSummary}" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap"/>
                             </StackPanel>
 
-                            <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="12">
+                            <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="12">
                                 <Border Grid.Row="0" Grid.Column="0" Padding="16" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource SurfaceBorderBrush}" BorderThickness="1" CornerRadius="14">
                                     <StackPanel Spacing="4">
                                         <TextBlock Text="{Binding StatOneLabel}" Foreground="{DynamicResource TextMutedBrush}"/>
@@ -189,9 +102,9 @@
                                 </Border>
                             </Grid>
 
-                            <TextBlock Grid.Row="2" Text="Narrative preview" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Grid.Row="3" Text="Narrative preview" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
 
-                            <TextBox Grid.Row="3"
+                            <TextBox Grid.Row="4"
                                      Text="{Binding PreviewText}"
                                      Background="{DynamicResource SurfaceAltBrush}"
                                      BorderBrush="{DynamicResource SurfaceBorderBrush}"
@@ -205,11 +118,12 @@
                 </Grid>
 
                 <Border Grid.Row="2" Padding="20" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource SurfaceBorderBrush}" BorderThickness="1" CornerRadius="16">
-                    <Grid ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="12">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*" ColumnSpacing="12">
                         <Button Grid.Column="0" Classes="primary" Command="{Binding FetchDataCommand}" Content="{Binding FetchButtonText}" MinWidth="120"/>
                         <Button Grid.Column="1" Classes="secondary" Command="{Binding GenerateReportCommand}" Content="{Binding GenerateButtonText}" MinWidth="140"/>
                         <Button Grid.Column="2" Classes="secondary" Command="{Binding ExportHtmlCommand}" Content="{Binding ExportButtonText}" MinWidth="140"/>
-                        <TextBlock Grid.Column="3"
+                        <Button Grid.Column="3" Classes="secondary" Command="{Binding ExportExcelCommand}" Content="{Binding ExportExcelButtonText}" MinWidth="140"/>
+                        <TextBlock Grid.Column="4"
                                    Text="{Binding StatusMessage}"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextMutedBrush}"

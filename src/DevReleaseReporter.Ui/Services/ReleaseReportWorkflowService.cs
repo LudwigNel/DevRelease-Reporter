@@ -85,7 +85,7 @@ public sealed class ReleaseReportWorkflowService
         return new HtmlReleaseReportRenderer().Render(report);
     }
 
-    public async Task ExportHtmlAsync(
+    public async Task<string> ExportHtmlAsync(
         ReleaseReportWorkflowRequest request,
         string html,
         CancellationToken cancellationToken = default)
@@ -93,7 +93,7 @@ public sealed class ReleaseReportWorkflowService
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(html);
 
-        var outputPath = Path.GetFullPath(request.OutputPath);
+        var outputPath = ResolveOutputPath(request.OutputPath, ".html");
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -101,6 +101,32 @@ public sealed class ReleaseReportWorkflowService
         }
 
         await File.WriteAllTextAsync(outputPath, html, Utf8WithoutBom, cancellationToken);
+        return outputPath;
+    }
+
+    public async Task<string> ExportExcelAsync(
+        ReleaseReportWorkflowRequest request,
+        ReleaseReport report,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(report);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var outputPath = ResolveOutputPath(request.OutputPath, ".xlsx");
+        var directory = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            new ExcelReleaseReportRenderer().Save(report, outputPath);
+        }, cancellationToken);
+
+        return outputPath;
     }
 
     private static string DeriveOrganizationName(Uri organizationUrl)
@@ -124,5 +150,15 @@ public sealed class ReleaseReportWorkflowService
         }
 
         return organizationUrl.Host;
+    }
+
+    private static string ResolveOutputPath(string configuredPath, string requiredExtension)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(configuredPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(requiredExtension);
+
+        var normalizedExtension = requiredExtension.StartsWith('.') ? requiredExtension : "." + requiredExtension;
+        var fullPath = Path.GetFullPath(configuredPath.Trim());
+        return Path.ChangeExtension(fullPath, normalizedExtension);
     }
 }

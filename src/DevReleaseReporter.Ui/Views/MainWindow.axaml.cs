@@ -8,4 +8,14 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
     }
+
+    private async void OpenSettingsDialog(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var settingsWindow = new SettingsWindow
+        {
+            DataContext = DataContext,
+        };
+
+        await settingsWindow.ShowDialog(this);
+    }
 }

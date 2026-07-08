@@ -24,22 +24,25 @@ public partial class MainWindowViewModel : ViewModelBase
     private const string ThemeDark = "Dark";
     private readonly ReleaseReportWorkflowService workflowService;
     private readonly UiPreferencesStore preferencesStore;
+    private readonly IPersonalAccessTokenStore personalAccessTokenStore;
     private bool isApplyingProfile;
     private ReleaseDataSet? fetchedReleaseData;
     private ReleaseReport? generatedReport;
     private string? generatedHtml;
 
     public MainWindowViewModel()
-        : this(new ReleaseReportWorkflowService(), new UiPreferencesStore())
+        : this(new ReleaseReportWorkflowService(), new UiPreferencesStore(), new PersonalAccessTokenStore())
     {
     }
 
     internal MainWindowViewModel(
         ReleaseReportWorkflowService workflowService,
-        UiPreferencesStore preferencesStore)
+        UiPreferencesStore preferencesStore,
+        IPersonalAccessTokenStore personalAccessTokenStore)
     {
         this.workflowService = workflowService;
         this.preferencesStore = preferencesStore;
+        this.personalAccessTokenStore = personalAccessTokenStore;
 
         organizationUrl = "https://dev.azure.com/your-org";
         projectName = string.Empty;
@@ -69,22 +72,32 @@ public partial class MainWindowViewModel : ViewModelBase
         statThreeLabel = "Profile";
         statThreeValue = LastUsedProfileName;
         statFourLabel = "Output";
-        statFourValue = "HTML export";
+        statFourValue = "HTML / Excel";
 
         FetchDataCommand = new AsyncRelayCommand(FetchDataAsync, CanFetchData);
         GenerateReportCommand = new AsyncRelayCommand(GenerateReportAsync, CanGenerateReport);
         ExportHtmlCommand = new AsyncRelayCommand(ExportHtmlAsync, CanExportHtml);
+        ExportExcelCommand = new AsyncRelayCommand(ExportExcelAsync, CanExportExcel);
         SaveProfileCommand = new RelayCommand(SaveProfile, CanSaveProfile);
         DeleteProfileCommand = new RelayCommand(DeleteProfile, CanDeleteProfile);
+        SavePersonalAccessTokenCommand = new RelayCommand(SavePersonalAccessToken, CanSavePersonalAccessToken);
+        ClearSavedPersonalAccessTokenCommand = new RelayCommand(ClearSavedPersonalAccessToken, CanClearSavedPersonalAccessToken);
 
         LoadPreferences();
         UpdateScopeSummary();
         ApplyThemeSelection();
+        UpdatePersonalAccessTokenStorageState();
     }
 
     public string Heading => "DevRelease Reporter";
 
     public bool IsIdle => !IsBusy;
+
+    public bool HasFetchedReleaseData => fetchedReleaseData is not null;
+
+    public string ContributorFilterInstruction => HasFetchedReleaseData
+        ? "Optionally select a contributor now to generate a contributor-specific report from the fetched dataset."
+        : "Fetch data first. Contributor names are loaded from the fetched dataset after the fetch completes.";
 
     public string FetchButtonText => IsBusy && string.Equals(BusyOperation, "fetch", StringComparison.Ordinal)
         ? "Fetching..."
@@ -98,15 +111,27 @@ public partial class MainWindowViewModel : ViewModelBase
         ? "Exporting..."
         : "Export as HTML";
 
+    public string ExportExcelButtonText => IsBusy && string.Equals(BusyOperation, "export-excel", StringComparison.Ordinal)
+        ? "Exporting..."
+        : "Export as Excel";
+
     public IAsyncRelayCommand FetchDataCommand { get; }
 
     public IAsyncRelayCommand GenerateReportCommand { get; }
 
     public IAsyncRelayCommand ExportHtmlCommand { get; }
 
+    public IAsyncRelayCommand ExportExcelCommand { get; }
+
     public IRelayCommand SaveProfileCommand { get; }
 
     public IRelayCommand DeleteProfileCommand { get; }
+
+    public IRelayCommand SavePersonalAccessTokenCommand { get; }
+
+    public IRelayCommand ClearSavedPersonalAccessTokenCommand { get; }
+
+    public bool IsPersonalAccessTokenStorageSupported => personalAccessTokenStore.IsSupported;
 
     [ObservableProperty]
     private string organizationUrl;
@@ -122,6 +147,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string personalAccessToken;
+
+    [ObservableProperty]
+    private bool hasSavedPersonalAccessToken;
+
+    [ObservableProperty]
+    private string personalAccessTokenStorageMessage = string.Empty;
 
     [ObservableProperty]
     private string fromDate;
@@ -216,12 +247,26 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private bool CanExportHtml() => !IsBusy && generatedReport is not null && !string.IsNullOrWhiteSpace(generatedHtml);
 
+    private bool CanExportExcel() => !IsBusy && generatedReport is not null;
+
     private bool CanSaveProfile() => !IsBusy && !string.IsNullOrWhiteSpace(ProfileNameInput);
 
     private bool CanDeleteProfile() =>
         !IsBusy &&
         !string.IsNullOrWhiteSpace(SelectedProfileName) &&
         !string.Equals(SelectedProfileName, LastUsedProfileName, StringComparison.OrdinalIgnoreCase);
+
+    private bool CanSavePersonalAccessToken() =>
+        !IsBusy &&
+        IsPersonalAccessTokenStorageSupported &&
+        !string.IsNullOrWhiteSpace(SelectedProfileName) &&
+        !string.IsNullOrWhiteSpace(PersonalAccessToken);
+
+    private bool CanClearSavedPersonalAccessToken() =>
+        !IsBusy &&
+        IsPersonalAccessTokenStorageSupported &&
+        !string.IsNullOrWhiteSpace(SelectedProfileName) &&
+        (HasSavedPersonalAccessToken || !string.IsNullOrWhiteSpace(PersonalAccessToken));
 
     partial void OnIsBusyChanged(bool value)
     {
@@ -230,6 +275,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(FetchButtonText));
         OnPropertyChanged(nameof(GenerateButtonText));
         OnPropertyChanged(nameof(ExportButtonText));
+        OnPropertyChanged(nameof(ExportExcelButtonText));
     }
 
     partial void OnBusyOperationChanged(string value)
@@ -237,6 +283,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(FetchButtonText));
         OnPropertyChanged(nameof(GenerateButtonText));
         OnPropertyChanged(nameof(ExportButtonText));
+        OnPropertyChanged(nameof(ExportExcelButtonText));
     }
 
     partial void OnSelectedThemeChanged(string value)
@@ -259,34 +306,39 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnProfileNameInputChanged(string value) => NotifyCommandStateChanged();
 
+    partial void OnPersonalAccessTokenChanged(string value)
+    {
+        NotifyCommandStateChanged();
+    }
+
     partial void OnSelectedContributorChanged(string value)
     {
         PersistCurrentProfile();
     }
 
-    partial void OnOrganizationUrlChanged(string value) => PersistCurrentProfile();
+    partial void OnOrganizationUrlChanged(string value) => HandleFetchScopeChanged();
 
-    partial void OnProjectNameChanged(string value) => PersistCurrentProfile();
+    partial void OnProjectNameChanged(string value) => HandleFetchScopeChanged();
 
-    partial void OnRepositoryNameChanged(string value) => PersistCurrentProfile();
+    partial void OnRepositoryNameChanged(string value) => HandleFetchScopeChanged();
 
-    partial void OnBranchNameChanged(string value) => PersistCurrentProfile();
+    partial void OnBranchNameChanged(string value) => HandleFetchScopeChanged();
 
     partial void OnFromDateChanged(string value)
     {
         UpdateScopeSummary();
-        PersistCurrentProfile();
+        HandleFetchScopeChanged();
     }
 
     partial void OnToDateChanged(string value)
     {
         UpdateScopeSummary();
-        PersistCurrentProfile();
+        HandleFetchScopeChanged();
     }
 
     partial void OnOutputPathChanged(string value) => PersistCurrentProfile();
 
-    partial void OnIncludeWorkItemsChanged(bool value) => PersistCurrentProfile();
+    partial void OnIncludeWorkItemsChanged(bool value) => HandleFetchScopeChanged();
 
     partial void OnIncludeTechnicalAppendixChanged(bool value) => PersistCurrentProfile();
 
@@ -304,6 +356,7 @@ public partial class MainWindowViewModel : ViewModelBase
             });
 
             fetchedReleaseData = await workflowService.FetchReleaseDataAsync(request, progress);
+            NotifyFetchStateChanged();
             generatedReport = null;
             generatedHtml = null;
             SyncContributorOptions(workflowService.GetAvailableContributors(fetchedReleaseData));
@@ -314,6 +367,7 @@ public partial class MainWindowViewModel : ViewModelBase
             FetchSummary =
                 $"Fetched {fetchedReleaseData.PullRequests.Count} pull requests, {fetchedReleaseData.Commits.Count} commits, and {fetchedReleaseData.WorkItems.Count} standalone work items.";
             UpdateFetchPreview(fetchedReleaseData);
+            PersistPersonalAccessTokenIfAvailable();
             StatusMessage = "Release data fetched. Optionally choose a contributor, then generate the report.";
             LastActivityText = $"Fetched at {DateTimeOffset.Now:dd MMM yyyy HH:mm}";
             PersistCurrentProfile();
@@ -338,28 +392,11 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             StatusMessage = exception.Message;
         }
-        finally
+        catch (InvalidOperationException exception)
         {
-            ClearBusyState();
+            StatusMessage = exception.Message;
         }
-    }
-
-    private Task GenerateReportAsync()
-    {
-        try
-        {
-            SetBusyState("generate", "Generating release report...", "Classifying items and composing the preview...");
-
-            var request = BuildWorkflowRequest();
-            generatedReport = workflowService.BuildReport(request, fetchedReleaseData!);
-            generatedHtml = workflowService.RenderHtml(generatedReport);
-
-            UpdateReportPreview(generatedReport);
-            StatusMessage = "Report generated. Review the preview and export the HTML file when ready.";
-            LastActivityText = $"Report generated at {DateTimeOffset.Now:dd MMM yyyy HH:mm}";
-            PersistCurrentProfile();
-        }
-        catch (ArgumentException exception)
+        catch (PlatformNotSupportedException exception)
         {
             StatusMessage = exception.Message;
         }
@@ -367,20 +404,20 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             ClearBusyState();
         }
-
-        return Task.CompletedTask;
     }
 
-    private async Task ExportHtmlAsync()
+    private async Task ExportExcelAsync()
     {
         try
         {
-            SetBusyState("export", "Exporting HTML report...", "Writing the HTML report to disk...");
+            SetBusyState("export-excel", "Exporting Excel report...", "Writing the Excel workbook to disk...");
+            await Task.Yield();
 
             var request = BuildWorkflowRequest();
-            await workflowService.ExportHtmlAsync(request, generatedHtml!);
+            var outputPath = await workflowService.ExportExcelAsync(request, generatedReport!);
 
-            StatusMessage = $"HTML report exported to {Path.GetFullPath(request.OutputPath)}";
+            PersistPersonalAccessTokenIfAvailable();
+            StatusMessage = $"Excel report exported to {outputPath}";
             LastActivityText = $"Exported at {DateTimeOffset.Now:dd MMM yyyy HH:mm}";
             PersistCurrentProfile();
         }
@@ -393,6 +430,97 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusMessage = exception.Message;
         }
         catch (UnauthorizedAccessException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (InvalidOperationException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (PlatformNotSupportedException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        finally
+        {
+            ClearBusyState();
+        }
+    }
+
+    private async Task GenerateReportAsync()
+    {
+        try
+        {
+            SetBusyState("generate", "Generating release report...", "Classifying items and composing the preview...");
+            await Task.Yield();
+
+            var request = BuildWorkflowRequest();
+            var reportArtifacts = await Task.Run(() =>
+            {
+                var report = workflowService.BuildReport(request, fetchedReleaseData!);
+                var html = workflowService.RenderHtml(report);
+                return (Report: report, Html: html);
+            });
+
+            generatedReport = reportArtifacts.Report;
+            generatedHtml = reportArtifacts.Html;
+
+            UpdateReportPreview(generatedReport);
+            PersistPersonalAccessTokenIfAvailable();
+            StatusMessage = "Report generated. Review the preview and export the file as HTML or Excel when ready.";
+            LastActivityText = $"Report generated at {DateTimeOffset.Now:dd MMM yyyy HH:mm}";
+            PersistCurrentProfile();
+        }
+        catch (ArgumentException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (InvalidOperationException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (PlatformNotSupportedException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        finally
+        {
+            ClearBusyState();
+        }
+    }
+
+    private async Task ExportHtmlAsync()
+    {
+        try
+        {
+            SetBusyState("export", "Exporting HTML report...", "Writing the HTML report to disk...");
+            await Task.Yield();
+
+            var request = BuildWorkflowRequest();
+            var outputPath = await workflowService.ExportHtmlAsync(request, generatedHtml!);
+
+            PersistPersonalAccessTokenIfAvailable();
+            StatusMessage = $"HTML report exported to {outputPath}";
+            LastActivityText = $"Exported at {DateTimeOffset.Now:dd MMM yyyy HH:mm}";
+            PersistCurrentProfile();
+        }
+        catch (ArgumentException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (IOException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (InvalidOperationException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (PlatformNotSupportedException exception)
         {
             StatusMessage = exception.Message;
         }
@@ -578,8 +706,18 @@ public partial class MainWindowViewModel : ViewModelBase
         FetchDataCommand.NotifyCanExecuteChanged();
         GenerateReportCommand.NotifyCanExecuteChanged();
         ExportHtmlCommand.NotifyCanExecuteChanged();
+        ExportExcelCommand.NotifyCanExecuteChanged();
         SaveProfileCommand.NotifyCanExecuteChanged();
         DeleteProfileCommand.NotifyCanExecuteChanged();
+        SavePersonalAccessTokenCommand.NotifyCanExecuteChanged();
+        ClearSavedPersonalAccessTokenCommand.NotifyCanExecuteChanged();
+    }
+
+    private void NotifyFetchStateChanged()
+    {
+        OnPropertyChanged(nameof(HasFetchedReleaseData));
+        OnPropertyChanged(nameof(ContributorFilterInstruction));
+        NotifyCommandStateChanged();
     }
 
     private static string BuildDefaultOutputPath()
@@ -694,17 +832,46 @@ public partial class MainWindowViewModel : ViewModelBase
         StatThreeValue = SelectedProfileName;
     }
 
-    private void SaveProfile()
+    private void HandleFetchScopeChanged()
     {
-        var normalizedName = ProfileNameInput.Trim();
-        if (!ProfileOptions.Contains(normalizedName, StringComparer.OrdinalIgnoreCase))
+        PersistCurrentProfile();
+
+        if (isApplyingProfile)
         {
-            ProfileOptions.Add(normalizedName);
+            return;
         }
 
-        SelectedProfileName = normalizedName;
-        PersistCurrentProfile();
-        StatusMessage = $"Saved profile '{normalizedName}'.";
+        InvalidateFetchedData();
+    }
+
+    private void SaveProfile()
+    {
+        try
+        {
+            var normalizedName = ProfileNameInput.Trim();
+            var personalAccessToken = PersonalAccessToken;
+
+            if (!ProfileOptions.Contains(normalizedName, StringComparer.OrdinalIgnoreCase))
+            {
+                ProfileOptions.Add(normalizedName);
+            }
+
+            SelectedProfileName = normalizedName;
+            PersonalAccessToken = personalAccessToken;
+            PersistCurrentProfile();
+            PersistPersonalAccessTokenIfAvailable();
+            StatusMessage = HasSavedPersonalAccessToken
+                ? $"Saved profile '{normalizedName}' and stored its PAT securely."
+                : $"Saved profile '{normalizedName}'.";
+        }
+        catch (InvalidOperationException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (PlatformNotSupportedException exception)
+        {
+            StatusMessage = exception.Message;
+        }
     }
 
     private void DeleteProfile()
@@ -715,11 +882,12 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         var profileToRemove = SelectedProfileName;
+        DeleteSavedPersonalAccessToken(profileToRemove);
         ProfileOptions.Remove(profileToRemove);
         SelectedProfileName = LastUsedProfileName;
         ProfileNameInput = string.Empty;
         SavePreferences();
-        StatusMessage = $"Deleted profile '{profileToRemove}'.";
+        StatusMessage = $"Deleted profile '{profileToRemove}' and removed any saved PAT.";
     }
 
     private void ApplySelectedProfile(string profileName)
@@ -750,6 +918,7 @@ public partial class MainWindowViewModel : ViewModelBase
             ProfileNameInput = string.Equals(profile.Name, LastUsedProfileName, StringComparison.OrdinalIgnoreCase)
                 ? string.Empty
                 : profile.Name;
+            LoadSavedPersonalAccessToken(profile.Name);
             UpdateScopeSummary();
         }
         finally
@@ -757,6 +926,7 @@ public partial class MainWindowViewModel : ViewModelBase
             isApplyingProfile = false;
         }
 
+        InvalidateFetchedData();
         SavePreferences();
     }
 
@@ -789,6 +959,140 @@ public partial class MainWindowViewModel : ViewModelBase
             .OrderBy(static profile => string.Equals(profile.Name, LastUsedProfileName, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
             .ThenBy(static profile => profile.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private void SavePersonalAccessToken()
+    {
+        try
+        {
+            personalAccessTokenStore.Save(SelectedProfileName, RequireValue(PersonalAccessToken, nameof(PersonalAccessToken)));
+            HasSavedPersonalAccessToken = true;
+            UpdatePersonalAccessTokenStorageState();
+            StatusMessage = $"Stored the PAT securely for profile '{SelectedProfileName}'.";
+        }
+        catch (InvalidOperationException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (PlatformNotSupportedException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+    }
+
+    private void ClearSavedPersonalAccessToken()
+    {
+        try
+        {
+            DeleteSavedPersonalAccessToken(SelectedProfileName);
+            PersonalAccessToken = string.Empty;
+            StatusMessage = $"Removed the saved PAT for profile '{SelectedProfileName}'.";
+        }
+        catch (InvalidOperationException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (PlatformNotSupportedException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+    }
+
+    private void LoadSavedPersonalAccessToken(string profileName)
+    {
+        if (!IsPersonalAccessTokenStorageSupported)
+        {
+            HasSavedPersonalAccessToken = false;
+            UpdatePersonalAccessTokenStorageState();
+            return;
+        }
+
+        try
+        {
+            PersonalAccessToken = personalAccessTokenStore.Load(profileName) ?? string.Empty;
+            HasSavedPersonalAccessToken = !string.IsNullOrWhiteSpace(PersonalAccessToken);
+            UpdatePersonalAccessTokenStorageState();
+        }
+        catch (InvalidOperationException exception)
+        {
+            HasSavedPersonalAccessToken = false;
+            UpdatePersonalAccessTokenStorageState();
+            StatusMessage = exception.Message;
+        }
+        catch (PlatformNotSupportedException exception)
+        {
+            HasSavedPersonalAccessToken = false;
+            UpdatePersonalAccessTokenStorageState();
+            StatusMessage = exception.Message;
+        }
+    }
+
+    private void PersistPersonalAccessTokenIfAvailable()
+    {
+        if (!IsPersonalAccessTokenStorageSupported || string.IsNullOrWhiteSpace(PersonalAccessToken))
+        {
+            UpdatePersonalAccessTokenStorageState();
+            return;
+        }
+
+        personalAccessTokenStore.Save(SelectedProfileName, PersonalAccessToken);
+        HasSavedPersonalAccessToken = true;
+        UpdatePersonalAccessTokenStorageState();
+    }
+
+    private void DeleteSavedPersonalAccessToken(string profileName)
+    {
+        if (!IsPersonalAccessTokenStorageSupported)
+        {
+            HasSavedPersonalAccessToken = false;
+            UpdatePersonalAccessTokenStorageState();
+            return;
+        }
+
+        personalAccessTokenStore.Delete(profileName);
+        HasSavedPersonalAccessToken = false;
+        UpdatePersonalAccessTokenStorageState();
+    }
+
+    private void UpdatePersonalAccessTokenStorageState()
+    {
+        PersonalAccessTokenStorageMessage = !IsPersonalAccessTokenStorageSupported
+            ? "Secure PAT storage is currently only available on Windows."
+            : HasSavedPersonalAccessToken
+                ? "Stored securely in Windows Credential Manager for the selected profile."
+                : "Not saved yet. Use the secure storage buttons to persist this PAT for the selected profile.";
+
+        NotifyCommandStateChanged();
+    }
+
+    private void InvalidateFetchedData()
+    {
+        if (fetchedReleaseData is null && generatedReport is null && string.IsNullOrWhiteSpace(generatedHtml))
+        {
+            SyncContributorOptions(Array.Empty<string>());
+            EnsureContributorOption(SelectedContributor);
+            NotifyFetchStateChanged();
+            return;
+        }
+
+        fetchedReleaseData = null;
+        generatedReport = null;
+        generatedHtml = null;
+        FetchSummary = "No release data fetched yet.";
+        PreviewTitle = "Release report preview";
+        PreviewSubtitle = "Fetch Azure DevOps activity to see the release scope and contributor options.";
+        PreviewText = "Fetch data, generate the report, and this panel will show a stakeholder-friendly preview.";
+        StatOneLabel = "Date range";
+        StatOneValue = $"{FromDate} -> {ToDate}";
+        StatTwoLabel = "Theme";
+        StatTwoValue = SelectedTheme;
+        StatThreeLabel = "Profile";
+        StatThreeValue = SelectedProfileName;
+        StatFourLabel = "Output";
+        StatFourValue = "HTML / Excel";
+        SyncContributorOptions(Array.Empty<string>());
+        EnsureContributorOption(SelectedContributor);
+        NotifyFetchStateChanged();
     }
 
     private UiProfile CreateCurrentProfile(string profileName) =>

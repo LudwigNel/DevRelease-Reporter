@@ -25,7 +25,8 @@ public partial class App : Application
             {
                 DataContext = new MainWindowViewModel(
                     new ReleaseReportWorkflowService(),
-                    new UiPreferencesStore()),
+                    new UiPreferencesStore(),
+                    new PersonalAccessTokenStore()),
             };
         }
 

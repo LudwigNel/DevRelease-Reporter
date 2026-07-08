@@ -1,0 +1,139 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:DevReleaseReporter.Ui.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="DevReleaseReporter.Ui.Views.SettingsWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="640"
+        Height="820"
+        MinWidth="540"
+        MinHeight="680"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/avalonia-logo.ico"
+        Background="{DynamicResource PageBackgroundBrush}"
+        Title="Settings">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="*,Auto" Margin="24" RowSpacing="16">
+        <Border Grid.Row="0"
+                Padding="20"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="16">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    <TextBlock Text="Manage profiles, Azure DevOps inputs, secure PAT storage, and app preferences."
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"/>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="form-label" Text="Profile"/>
+                        <ComboBox ItemsSource="{Binding ProfileOptions}"
+                                  SelectedItem="{Binding SelectedProfileName}" />
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <TextBox Text="{Binding ProfileNameInput}" PlaceholderText="Profile name" />
+                        <Button Grid.Column="1" Classes="secondary" Command="{Binding SaveProfileCommand}" Content="Save profile"/>
+                        <Button Grid.Column="2" Classes="secondary" Command="{Binding DeleteProfileCommand}" Content="Delete"/>
+                    </Grid>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="form-label" Text="Theme"/>
+                        <ComboBox ItemsSource="{Binding ThemeOptions}"
+                                  SelectedItem="{Binding SelectedTheme}" />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="form-label" Text="Azure DevOps URL"/>
+                        <TextBox Text="{Binding OrganizationUrl}" PlaceholderText="https://dev.azure.com/your-org"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="form-label" Text="Project name"/>
+                        <TextBox Text="{Binding ProjectName}" PlaceholderText="YourProject"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="form-label" Text="Repository"/>
+                        <TextBox Text="{Binding RepositoryName}" PlaceholderText="YourRepository"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="form-label" Text="Branch (optional)"/>
+                        <TextBox Text="{Binding BranchName}" PlaceholderText="Leave blank to use all branches"/>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="form-label" Text="From date"/>
+                            <TextBox Text="{Binding FromDate}" PlaceholderText="yyyy-MM-dd"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Spacing="6">
+                            <TextBlock Classes="form-label" Text="To date"/>
+                            <TextBox Text="{Binding ToDate}" PlaceholderText="yyyy-MM-dd"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="form-label" Text="PAT token"/>
+                        <TextBox Text="{Binding PersonalAccessToken, UpdateSourceTrigger=PropertyChanged}"
+                                 PasswordChar="●"
+                                 PlaceholderText="Personal access token"/>
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Classes="secondary"
+                                        Command="{Binding SavePersonalAccessTokenCommand}"
+                                        Content="Save securely"/>
+                                <Button Classes="secondary"
+                                        Command="{Binding ClearSavedPersonalAccessTokenCommand}"
+                                        Content="Clear saved"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding PersonalAccessTokenStorageMessage}"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="form-label" Text="Output report path"/>
+                        <TextBox Text="{Binding OutputPath}" PlaceholderText="C:\Reports\release-report.html"/>
+                        <TextBlock Text="HTML export uses a .html file and Excel export uses a .xlsx file. The app adjusts the extension automatically."
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <CheckBox IsChecked="{Binding IncludeWorkItems}" Content="Include linked work items"/>
+                    <CheckBox IsChecked="{Binding IncludeTechnicalAppendix}" Content="Include technical appendix"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <Border Grid.Row="1"
+                Padding="16"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="16">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <TextBlock Text="Changes are saved automatically to the selected profile."
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"/>
+                <Button Grid.Column="1"
+                        Classes="primary"
+                        Content="Done"
+                        Click="CloseDialog"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
