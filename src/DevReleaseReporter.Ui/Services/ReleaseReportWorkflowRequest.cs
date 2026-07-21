@@ -18,7 +18,9 @@ public sealed record ReleaseReportWorkflowRequest
 
     public string? ContributorName { get; init; }
 
-    public required string OutputPath { get; init; }
+    public required string OutputDirectory { get; init; }
+
+    public required string ReportName { get; init; }
 
     public bool IncludeWorkItems { get; init; } = true;
 

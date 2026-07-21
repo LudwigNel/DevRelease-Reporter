@@ -93,7 +93,7 @@ public sealed class ReleaseReportWorkflowService
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(html);
 
-        var outputPath = ResolveOutputPath(request.OutputPath, ".html");
+        var outputPath = ResolveOutputPath(request.OutputDirectory, request.ReportName, ".html");
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -113,7 +113,7 @@ public sealed class ReleaseReportWorkflowService
         ArgumentNullException.ThrowIfNull(report);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var outputPath = ResolveOutputPath(request.OutputPath, ".xlsx");
+        var outputPath = ResolveOutputPath(request.OutputDirectory, request.ReportName, ".xlsx");
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(directory))
         {
@@ -152,13 +152,35 @@ public sealed class ReleaseReportWorkflowService
         return organizationUrl.Host;
     }
 
-    private static string ResolveOutputPath(string configuredPath, string requiredExtension)
+    private static string ResolveOutputPath(
+        string outputDirectory,
+        string reportName,
+        string requiredExtension)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(configuredPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reportName);
         ArgumentException.ThrowIfNullOrWhiteSpace(requiredExtension);
 
         var normalizedExtension = requiredExtension.StartsWith('.') ? requiredExtension : "." + requiredExtension;
-        var fullPath = Path.GetFullPath(configuredPath.Trim());
-        return Path.ChangeExtension(fullPath, normalizedExtension);
+        var normalizedName = reportName.Trim();
+        if (!string.Equals(normalizedName, Path.GetFileName(normalizedName), StringComparison.Ordinal) ||
+            normalizedName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            throw new ArgumentException("ReportName must be a valid file name without a folder path.");
+        }
+
+        if (normalizedName.EndsWith(".html", StringComparison.OrdinalIgnoreCase) ||
+            normalizedName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedName = Path.GetFileNameWithoutExtension(normalizedName);
+        }
+
+        if (string.IsNullOrWhiteSpace(normalizedName))
+        {
+            throw new ArgumentException("ReportName is required.");
+        }
+
+        var fileName = normalizedName + normalizedExtension;
+        return Path.Combine(Path.GetFullPath(outputDirectory.Trim()), fileName);
     }
 }

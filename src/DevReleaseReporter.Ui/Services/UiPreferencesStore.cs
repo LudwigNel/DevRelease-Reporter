@@ -49,13 +49,13 @@ public sealed class UiPreferencesStore
     {
         var profiles = preferences.Profiles
             .Where(static profile => !string.IsNullOrWhiteSpace(profile.Name))
-            .Select(static profile => profile with { Name = profile.Name.Trim() })
+            .Select(NormalizeProfile)
             .DistinctBy(static profile => profile.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         if (profiles.Count == 0)
         {
-            profiles.Add(new UiProfile
+            profiles.Add(NormalizeProfile(new UiProfile
             {
                 Name = LastUsedProfileName,
                 OrganizationUrl = preferences.OrganizationUrl ?? "https://dev.azure.com/your-org",
@@ -68,7 +68,7 @@ public sealed class UiPreferencesStore
                 OutputPath = preferences.OutputPath ?? string.Empty,
                 IncludeWorkItems = preferences.IncludeWorkItems,
                 IncludeTechnicalAppendix = preferences.IncludeTechnicalAppendix,
-            });
+            }));
         }
 
         if (!profiles.Any(static profile => string.Equals(profile.Name, LastUsedProfileName, StringComparison.OrdinalIgnoreCase)))
@@ -95,6 +95,35 @@ public sealed class UiPreferencesStore
         {
             Profiles = [CreateDefaultProfile()],
         };
+
+    private static UiProfile NormalizeProfile(UiProfile profile)
+    {
+        var outputDirectory = profile.OutputDirectory;
+        var reportName = profile.ReportName;
+
+        if (!string.IsNullOrWhiteSpace(profile.OutputPath))
+        {
+            var legacyOutputPath = Path.GetFullPath(profile.OutputPath.Trim());
+            if (string.IsNullOrWhiteSpace(outputDirectory))
+            {
+                outputDirectory = Path.GetDirectoryName(legacyOutputPath) ?? string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(reportName) ||
+                string.Equals(reportName, "release-report", StringComparison.Ordinal))
+            {
+                reportName = Path.GetFileNameWithoutExtension(legacyOutputPath);
+            }
+        }
+
+        return profile with
+        {
+            Name = profile.Name.Trim(),
+            OutputDirectory = outputDirectory,
+            ReportName = string.IsNullOrWhiteSpace(reportName) ? "release-report" : reportName,
+            OutputPath = null,
+        };
+    }
 
     private static UiProfile CreateDefaultProfile() =>
         new()

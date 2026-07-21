@@ -26,6 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly UiPreferencesStore preferencesStore;
     private readonly IPersonalAccessTokenStore personalAccessTokenStore;
     private bool isApplyingProfile;
+    private bool isSynchronizingDates;
     private ReleaseDataSet? fetchedReleaseData;
     private ReleaseReport? generatedReport;
     private string? generatedHtml;
@@ -51,6 +52,8 @@ public partial class MainWindowViewModel : ViewModelBase
         personalAccessToken = string.Empty;
         fromDate = DateTime.Today.AddDays(-7).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         toDate = DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        fromDateSelection = new DateTimeOffset(DateTime.Today.AddDays(-7));
+        toDateSelection = new DateTimeOffset(DateTime.Today);
         availableContributors = new ObservableCollection<string> { AllContributorsOption };
         profileOptions = new ObservableCollection<string> { LastUsedProfileName };
         themeOptions = [ThemeSystem, ThemeLight, ThemeDark];
@@ -58,7 +61,8 @@ public partial class MainWindowViewModel : ViewModelBase
         selectedProfileName = LastUsedProfileName;
         profileNameInput = string.Empty;
         selectedContributor = AllContributorsOption;
-        outputPath = BuildDefaultOutputPath();
+        outputDirectory = BuildDefaultOutputDirectory();
+        reportName = "release-report";
         statusMessage = "Ready to fetch Azure DevOps release data.";
         fetchSummary = "No release data fetched yet.";
         lastActivityText = "No activity yet";
@@ -161,6 +165,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private string toDate;
 
     [ObservableProperty]
+    private DateTimeOffset? fromDateSelection;
+
+    [ObservableProperty]
+    private DateTimeOffset? toDateSelection;
+
+    [ObservableProperty]
     private ObservableCollection<string> availableContributors;
 
     [ObservableProperty]
@@ -182,7 +192,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private string selectedContributor;
 
     [ObservableProperty]
-    private string outputPath;
+    private string outputDirectory;
+
+    [ObservableProperty]
+    private string reportName;
 
     [ObservableProperty]
     private bool includeWorkItems = true;
@@ -326,17 +339,63 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnFromDateChanged(string value)
     {
+        if (isSynchronizingDates)
+        {
+            return;
+        }
+
+        isSynchronizingDates = true;
+        FromDateSelection = ParseDateSelection(value);
+        isSynchronizingDates = false;
         UpdateScopeSummary();
         HandleFetchScopeChanged();
     }
 
     partial void OnToDateChanged(string value)
     {
+        if (isSynchronizingDates)
+        {
+            return;
+        }
+
+        isSynchronizingDates = true;
+        ToDateSelection = ParseDateSelection(value);
+        isSynchronizingDates = false;
         UpdateScopeSummary();
         HandleFetchScopeChanged();
     }
 
-    partial void OnOutputPathChanged(string value) => PersistCurrentProfile();
+    partial void OnFromDateSelectionChanged(DateTimeOffset? value)
+    {
+        if (isSynchronizingDates)
+        {
+            return;
+        }
+
+        isSynchronizingDates = true;
+        FromDate = FormatDateSelection(value);
+        isSynchronizingDates = false;
+        UpdateScopeSummary();
+        HandleFetchScopeChanged();
+    }
+
+    partial void OnToDateSelectionChanged(DateTimeOffset? value)
+    {
+        if (isSynchronizingDates)
+        {
+            return;
+        }
+
+        isSynchronizingDates = true;
+        ToDate = FormatDateSelection(value);
+        isSynchronizingDates = false;
+        UpdateScopeSummary();
+        HandleFetchScopeChanged();
+    }
+
+    partial void OnOutputDirectoryChanged(string value) => PersistCurrentProfile();
+
+    partial void OnReportNameChanged(string value) => PersistCurrentProfile();
 
     partial void OnIncludeWorkItemsChanged(bool value) => HandleFetchScopeChanged();
 
@@ -541,7 +600,8 @@ public partial class MainWindowViewModel : ViewModelBase
             ToDate = ParseDate(ToDate, endOfDay: true, nameof(ToDate)),
             BranchName = NormalizeOptionalValue(BranchName),
             ContributorName = NormalizeContributorSelection(SelectedContributor),
-            OutputPath = RequireValue(OutputPath, nameof(OutputPath)),
+            OutputDirectory = RequireValue(OutputDirectory, nameof(OutputDirectory)),
+            ReportName = RequireValue(ReportName, nameof(ReportName)),
             IncludeWorkItems = IncludeWorkItems,
             IncludeTechnicalAppendix = IncludeTechnicalAppendix,
         };
@@ -576,6 +636,21 @@ public partial class MainWindowViewModel : ViewModelBase
 
         throw new FormatException($"{fieldName} must be a valid yyyy-MM-dd or ISO 8601 date.");
     }
+
+    private static DateTimeOffset? ParseDateSelection(string value)
+    {
+        if (DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
+        {
+            return new DateTimeOffset(dateOnly.ToDateTime(TimeOnly.MinValue, DateTimeKind.Local));
+        }
+
+        return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var date)
+            ? date
+            : null;
+    }
+
+    private static string FormatDateSelection(DateTimeOffset? value) =>
+        value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty;
 
     private static string RequireValue(string value, string fieldName)
     {
@@ -720,7 +795,7 @@ public partial class MainWindowViewModel : ViewModelBase
         NotifyCommandStateChanged();
     }
 
-    private static string BuildDefaultOutputPath()
+    private static string BuildDefaultOutputDirectory()
     {
         var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
         if (string.IsNullOrWhiteSpace(documentsPath))
@@ -728,7 +803,7 @@ public partial class MainWindowViewModel : ViewModelBase
             documentsPath = AppContext.BaseDirectory;
         }
 
-        return Path.Combine(documentsPath, "DevReleaseReporter", "release-report.html");
+        return Path.Combine(documentsPath, "DevReleaseReporter");
     }
 
     private void SyncContributorOptions(IReadOnlyList<string> contributors)
@@ -909,7 +984,8 @@ public partial class MainWindowViewModel : ViewModelBase
             BranchName = profile.BranchName;
             FromDate = string.IsNullOrWhiteSpace(profile.FromDate) ? FromDate : profile.FromDate;
             ToDate = string.IsNullOrWhiteSpace(profile.ToDate) ? ToDate : profile.ToDate;
-            OutputPath = string.IsNullOrWhiteSpace(profile.OutputPath) ? OutputPath : profile.OutputPath;
+            OutputDirectory = string.IsNullOrWhiteSpace(profile.OutputDirectory) ? OutputDirectory : profile.OutputDirectory;
+            ReportName = string.IsNullOrWhiteSpace(profile.ReportName) ? ReportName : profile.ReportName;
             IncludeWorkItems = profile.IncludeWorkItems;
             IncludeTechnicalAppendix = profile.IncludeTechnicalAppendix;
             EnsureContributorOption(profile.ContributorName);
@@ -1106,7 +1182,8 @@ public partial class MainWindowViewModel : ViewModelBase
             ContributorName = SelectedContributor,
             FromDate = FromDate,
             ToDate = ToDate,
-            OutputPath = OutputPath,
+            OutputDirectory = OutputDirectory,
+            ReportName = ReportName,
             IncludeWorkItems = IncludeWorkItems,
             IncludeTechnicalAppendix = IncludeTechnicalAppendix,
         };

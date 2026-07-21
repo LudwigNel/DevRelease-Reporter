@@ -59,10 +59,27 @@
                                     BorderThickness="1"
                                     CornerRadius="14">
                                 <StackPanel Spacing="8">
-                                    <TextBlock Text="Contributor filter" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                    <ComboBox ItemsSource="{Binding AvailableContributors}"
-                                              SelectedItem="{Binding SelectedContributor}"
-                                              IsEnabled="{Binding HasFetchedReleaseData}" />
+                                    <TextBlock Text="Report scope" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <Grid ColumnDefinitions="*,*,1.4*,1.4*" ColumnSpacing="12">
+                                        <StackPanel Spacing="6">
+                                            <TextBlock Classes="form-label" Text="From date"/>
+                                            <DatePicker SelectedDate="{Binding FromDateSelection}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Spacing="6">
+                                            <TextBlock Classes="form-label" Text="To date"/>
+                                            <DatePicker SelectedDate="{Binding ToDateSelection}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Spacing="6">
+                                            <TextBlock Classes="form-label" Text="Contributor"/>
+                                            <ComboBox ItemsSource="{Binding AvailableContributors}"
+                                                      SelectedItem="{Binding SelectedContributor}"
+                                                      IsEnabled="{Binding HasFetchedReleaseData}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="3" Spacing="6">
+                                            <TextBlock Classes="form-label" Text="Report file name"/>
+                                            <TextBox Text="{Binding ReportName}" PlaceholderText="release-report"/>
+                                        </StackPanel>
+                                    </Grid>
                                     <TextBlock Text="{Binding ContributorFilterInstruction}"
                                                Foreground="{DynamicResource TextMutedBrush}"
                                                TextWrapping="Wrap"/>

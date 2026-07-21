@@ -18,7 +18,12 @@ public sealed record UiProfile
 
     public string ToDate { get; init; } = string.Empty;
 
-    public string OutputPath { get; init; } = string.Empty;
+    public string OutputDirectory { get; init; } = string.Empty;
+
+    public string ReportName { get; init; } = "release-report";
+
+    // Retained to migrate profiles saved before the export folder and report name were separated.
+    public string? OutputPath { get; init; }
 
     public bool IncludeWorkItems { get; init; } = true;
 

@@ -72,18 +72,6 @@
                         <TextBox Text="{Binding BranchName}" PlaceholderText="Leave blank to use all branches"/>
                     </StackPanel>
 
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                        <StackPanel Spacing="6">
-                            <TextBlock Classes="form-label" Text="From date"/>
-                            <TextBox Text="{Binding FromDate}" PlaceholderText="yyyy-MM-dd"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="1" Spacing="6">
-                            <TextBlock Classes="form-label" Text="To date"/>
-                            <TextBox Text="{Binding ToDate}" PlaceholderText="yyyy-MM-dd"/>
-                        </StackPanel>
-                    </Grid>
-
                     <StackPanel Spacing="6">
                         <TextBlock Classes="form-label" Text="PAT token"/>
                         <TextBox Text="{Binding PersonalAccessToken, UpdateSourceTrigger=PropertyChanged}"
@@ -105,9 +93,9 @@
                     </StackPanel>
 
                     <StackPanel Spacing="6">
-                        <TextBlock Classes="form-label" Text="Output report path"/>
-                        <TextBox Text="{Binding OutputPath}" PlaceholderText="C:\Reports\release-report.html"/>
-                        <TextBlock Text="HTML export uses a .html file and Excel export uses a .xlsx file. The app adjusts the extension automatically."
+                        <TextBlock Classes="form-label" Text="Export folder"/>
+                        <TextBox Text="{Binding OutputDirectory}" PlaceholderText="C:\Reports"/>
+                        <TextBlock Text="Choose the folder here and set the report file name on the main screen."
                                    Foreground="{DynamicResource TextMutedBrush}"
                                    TextWrapping="Wrap"/>
                     </StackPanel>
