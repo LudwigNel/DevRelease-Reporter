@@ -24,6 +24,9 @@ internal sealed record GitCommitDto
 
     [JsonPropertyName("author")]
     public IdentityDateDto? Author { get; init; }
+
+    [JsonPropertyName("workItems")]
+    public IReadOnlyList<WorkItemReferenceDto>? WorkItems { get; init; }
 }
 
 internal sealed record GitPullRequestDto

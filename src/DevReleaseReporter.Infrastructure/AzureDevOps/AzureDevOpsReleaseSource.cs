@@ -104,8 +104,10 @@ public sealed class AzureDevOpsReleaseSource(HttpClient httpClient) : IAzureDevO
             var branchName = NormalizeBranchName(query.BranchName);
             if (branchName is not null)
             {
+                // Unlike searchCriteria.targetRefName on the pull requests endpoint, this
+                // endpoint's itemVersion.version expects a plain branch name, not a full ref.
                 parameters["searchCriteria.itemVersion.versionType"] = "branch";
-                parameters["searchCriteria.itemVersion.version"] = branchName;
+                parameters["searchCriteria.itemVersion.version"] = StripRefsHeadsPrefix(branchName);
             }
 
             var response = await SendForJsonAsync<AzureDevOpsCollectionResponse<GitCommitDto>>(
@@ -250,13 +252,15 @@ public sealed class AzureDevOpsReleaseSource(HttpClient httpClient) : IAzureDevO
                 continue;
             }
 
-            var commitWorkItems = await SendForJsonAsync<AzureDevOpsCollectionResponse<WorkItemReferenceDto>>(
+            var commitDetail = await SendForJsonAsync<GitCommitDto>(
                 connectionOptions,
                 HttpMethod.Get,
-                BuildRepositoryUri(connectionOptions, $"commits/{commit.Id}/workitems"),
+                BuildRepositoryUri(connectionOptions, $"commits/{commit.Id}"),
                 cancellationToken: cancellationToken);
 
-            foreach (var workItemId in commitWorkItems.Value.Select(static workItem => workItem.Id))
+            var commitWorkItems = commitDetail.WorkItems ?? Array.Empty<WorkItemReferenceDto>();
+
+            foreach (var workItemId in commitWorkItems.Select(static workItem => workItem.Id))
             {
                 if (!workItemCommitMap.TryGetValue(workItemId, out var relatedCommitIds))
                 {
@@ -496,6 +500,11 @@ public sealed class AzureDevOpsReleaseSource(HttpClient httpClient) : IAzureDevO
         return new Uri($"{uri}?{queryString}", UriKind.Absolute);
     }
 
+    private static string StripRefsHeadsPrefix(string branchRef) =>
+        branchRef.StartsWith("refs/heads/", StringComparison.OrdinalIgnoreCase)
+            ? branchRef["refs/heads/".Length..]
+            : branchRef;
+
     private static string? NormalizeBranchName(string? branchName)
     {
         if (string.IsNullOrWhiteSpace(branchName))
@@ -504,9 +513,28 @@ public sealed class AzureDevOpsReleaseSource(HttpClient httpClient) : IAzureDevO
         }
 
         var normalized = branchName.Trim();
-        return normalized.StartsWith("refs/heads/", StringComparison.OrdinalIgnoreCase)
-            ? normalized
-            : $"refs/heads/{normalized}";
+
+        if (normalized.StartsWith("refs/heads/", StringComparison.OrdinalIgnoreCase))
+        {
+            return normalized;
+        }
+
+        if (normalized.StartsWith("refs/remotes/", StringComparison.OrdinalIgnoreCase))
+        {
+            var afterRemotes = normalized["refs/remotes/".Length..];
+            var remoteSeparatorIndex = afterRemotes.IndexOf('/');
+            normalized = remoteSeparatorIndex >= 0
+                ? afterRemotes[(remoteSeparatorIndex + 1)..]
+                : afterRemotes;
+        }
+        else if (normalized.StartsWith("origin/", StringComparison.OrdinalIgnoreCase))
+        {
+            // Azure DevOps branch refs have no remote prefix; "origin/" is a local
+            // Git remote-tracking convention that users commonly paste by mistake.
+            normalized = normalized["origin/".Length..];
+        }
+
+        return $"refs/heads/{normalized}";
     }
 
     private static void ValidateConnection(AzureDevOpsConnectionOptions connectionOptions)
